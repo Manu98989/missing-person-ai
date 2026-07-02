@@ -34,6 +34,8 @@ elif st.session_state["login_status"]:
             if st.session_state.get("nc_file_key") != file_key:
                 # New image uploaded — run detection and cache results
                 unique_id = str(uuid.uuid4())
+                os.makedirs("resources", exist_ok=True)
+
                 uploaded_file_path = "./resources/" + unique_id + ".jpg"
 
                 with open(uploaded_file_path, "wb") as f:
