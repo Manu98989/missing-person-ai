@@ -24,41 +24,53 @@ upload_mode = st.radio(
 )
 
 image_col, form_col = st.columns(2)
+
 save_flag = 0
-extracted_faces = []  # list of (landmarks, frame_rgb) for video mode
-face_mesh = None  # single face for image mode
+extracted_faces = []
+face_mesh = None
 face_detected = False
 unique_id = None
 uploaded_file_path = None
 
-# ── Image upload ──────────────────────────────────────────────────────────────
+# ───────────────────────────────────────── IMAGE ───────────────────────────────
 if upload_mode == "Image":
     with image_col:
         image_obj = st.file_uploader(
             "Upload photo", type=["jpg", "jpeg", "png"], key="user_submission_img"
         )
+
         if image_obj:
             unique_id = str(uuid.uuid4())
 
             with st.spinner("Processing..."):
-                 os.makedirs("./resources", exist_ok=True)
+                os.makedirs("./resources", exist_ok=True)
+
                 uploaded_file_path = "./resources/" + unique_id + ".jpg"
+
+                # save image
+                image_bytes = image_obj.read()
                 with open(uploaded_file_path, "wb") as f:
-                    f.write(image_obj.read())
+                    f.write(image_bytes)
 
-                image_obj.seek(0)
-                st.image(image_obj, width=200)
-                image_obj.seek(0)
-                image_numpy = image_obj_to_numpy(image_obj)
-                face_mesh = extract_face_mesh_landmarks(image_numpy)
+            # display image
+            image_obj.seek(0)
+            st.image(image_obj, width=200)
+            image_obj.seek(0)
 
-                if face_mesh is None:
-                    if uploaded_file_path and os.path.exists(uploaded_file_path):
-                        os.remove(uploaded_file_path)
-                else:
-                    face_detected = True
-                    st.success("✅ Face detected.")
+            # face detection
+            image_numpy = image_obj_to_numpy(image_obj)
+            face_mesh = extract_face_mesh_landmarks(image_numpy)
 
+            if face_mesh is None:
+                if os.path.exists(uploaded_file_path):
+                    os.remove(uploaded_file_path)
+                face_detected = False
+                st.error("❌ No face detected. Try another image.")
+            else:
+                face_detected = True
+                st.success("✅ Face detected.")
+
+    # ── Form (Image) ───────────────────────────────────────────────────────────
     if image_obj and face_detected:
         with form_col.form(key="image_submission_form"):
             sub_name = st.text_input("Your Name *")
@@ -71,21 +83,19 @@ if upload_mode == "Image":
 
             if submit_bt:
                 errors = []
+
                 if not sub_name.strip():
-                    errors.append("❌ Your Name is required.")
+                    errors.append("❌ Name required")
                 if not mobile_number.strip():
-                    errors.append("❌ Mobile Number is required.")
-                elif (
-                    not mobile_number.strip().isdigit()
-                    or len(mobile_number.strip()) != 10
-                ):
-                    errors.append("❌ Mobile Number must be exactly 10 digits.")
+                    errors.append("❌ Mobile required")
+                elif not mobile_number.isdigit() or len(mobile_number) != 10:
+                    errors.append("❌ Invalid mobile number")
                 if not address.strip():
-                    errors.append("❌ Location is required.")
+                    errors.append("❌ Location required")
 
                 if errors:
-                    for err in errors:
-                        st.error(err)
+                    for e in errors:
+                        st.error(e)
                 else:
                     details = PublicSubmissions(
                         submitted_by=sub_name.strip(),
@@ -97,22 +107,24 @@ if upload_mode == "Image":
                         birth_marks=birth_marks.strip() or None,
                         status="NF",
                     )
+
                     db_queries.new_public_case(details)
                     save_flag = 1
 
         if save_flag == 1:
-            st.success("✅ Submission received. Thank you!")
+            st.success("✅ Submission received successfully!")
 
-# ── Video upload ──────────────────────────────────────────────────────────────
+# ───────────────────────────────────────── VIDEO ───────────────────────────────
 else:
     with image_col:
         video_obj = st.file_uploader(
             "Upload video", type=["mp4", "mov", "avi"], key="user_submission_video"
         )
+
         if video_obj:
-            with st.spinner("Extracting faces from video..."):
-                # Save to temp file so OpenCV can read it
+            with st.spinner("Extracting faces..."):
                 suffix = "." + video_obj.name.rsplit(".", 1)[-1]
+
                 with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
                     tmp.write(video_obj.read())
                     tmp_path = tmp.name
@@ -121,18 +133,15 @@ else:
                 os.unlink(tmp_path)
 
                 if not extracted_faces:
-                    st.error(
-                        "❌ No faces detected in the video.\n\n"
-                        "**Tips:** ensure the video shows a clear front-facing view "
-                        "of the person's face in good lighting."
-                    )
+                    st.error("❌ No faces detected in video.")
                 else:
-                    st.success(f"✅ Found {len(extracted_faces)} unique face(s).")
-                    st.caption("Detected faces:")
-                    thumb_cols = st.columns(min(len(extracted_faces), 4))
-                    for idx, (_, frame_rgb) in enumerate(extracted_faces):
-                        thumb_cols[idx % 4].image(frame_rgb, width=100)
+                    st.success(f"✅ {len(extracted_faces)} face(s) found")
 
+                    cols = st.columns(min(len(extracted_faces), 4))
+                    for i, (_, frame) in enumerate(extracted_faces):
+                        cols[i % 4].image(frame, width=100)
+
+    # ── Form (Video) ───────────────────────────────────────────────────────────
     if extracted_faces:
         with form_col.form(key="video_submission_form"):
             sub_name = st.text_input("Your Name *")
@@ -141,29 +150,31 @@ else:
             address = st.text_input("Location where person was seen *")
             birth_marks = st.text_input("Birth Marks / Identifying Features")
 
-            submit_bt = st.form_submit_button(f"Submit {len(extracted_faces)} face(s)")
+            submit_bt = st.form_submit_button(
+                f"Submit {len(extracted_faces)} face(s)"
+            )
 
             if submit_bt:
                 errors = []
+
                 if not sub_name.strip():
-                    errors.append("❌ Your Name is required.")
+                    errors.append("❌ Name required")
                 if not mobile_number.strip():
-                    errors.append("❌ Mobile Number is required.")
-                elif (
-                    not mobile_number.strip().isdigit()
-                    or len(mobile_number.strip()) != 10
-                ):
-                    errors.append("❌ Mobile Number must be exactly 10 digits.")
+                    errors.append("❌ Mobile required")
+                elif not mobile_number.isdigit() or len(mobile_number) != 10:
+                    errors.append("❌ Invalid mobile number")
                 if not address.strip():
-                    errors.append("❌ Location is required.")
+                    errors.append("❌ Location required")
 
                 if errors:
-                    for err in errors:
-                        st.error(err)
+                    for e in errors:
+                        st.error(e)
                 else:
                     count = 0
+
                     for landmarks, _ in extracted_faces:
                         sub_id = str(uuid.uuid4())
+
                         details = PublicSubmissions(
                             submitted_by=sub_name.strip(),
                             location=address.strip(),
@@ -174,6 +185,8 @@ else:
                             birth_marks=birth_marks.strip() or None,
                             status="NF",
                         )
+
                         db_queries.new_public_case(details)
                         count += 1
-                    st.success(f"✅ {count} submission(s) received. Thank you!")
+
+                    st.success(f"✅ {count} submission(s) saved successfully!")
