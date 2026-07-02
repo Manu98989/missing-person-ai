@@ -41,6 +41,7 @@ if upload_mode == "Image":
             unique_id = str(uuid.uuid4())
 
             with st.spinner("Processing..."):
+                 os.makedirs("./resources", exist_ok=True)
                 uploaded_file_path = "./resources/" + unique_id + ".jpg"
                 with open(uploaded_file_path, "wb") as f:
                     f.write(image_obj.read())
