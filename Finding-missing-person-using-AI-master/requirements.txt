@@ -10,3 +10,4 @@ mediapipe
 streamlit-authenticator==0.4.2
 folium
 streamlit-folium
+opencv-python-headless
