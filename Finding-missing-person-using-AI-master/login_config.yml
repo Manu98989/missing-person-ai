@@ -1,0 +1,18 @@
+# https://blog.streamlit.io/streamlit-authenticator-part-1-adding-an-authentication-component-to-your-app/
+
+credentials:
+  usernames:
+    manasa:
+      email: manasavonguri@gmail.com
+      name: Manasa
+      city: Hyderabad
+      area: hyd
+      role: Admin
+      password: '$2b$12$ByZbwxrcvCXVLQO4zjI95OteXToaBiwWDqujsHiKfeGzionz0VqAG' # abc
+cookie:
+  expiry_days: 1
+  key: a8f3d2e1b9c7f4a0e5d6c3b2a1f8e7d4c9b0a3f2e1d8c7b6a5f4e3d2c1b0a9
+  name: random_cookie_name
+preauthorized:
+  emails:
+  - manasavonguri@gmail.com
