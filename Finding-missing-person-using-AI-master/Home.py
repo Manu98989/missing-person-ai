@@ -12,8 +12,11 @@ db_queries.create_db()
 if "login_status" not in st.session_state:
     st.session_state["login_status"] = False
 
+from pathlib import Path
+
 try:
-    with open("login_config.yml") as file:
+    config_path = Path(__file__).parent / "login_config.yml"
+    with open(config_path, "r") as file:
         config = yaml.load(file, Loader=SafeLoader)
 except FileNotFoundError:
     st.error("Configuration file 'login_config.yml' not found")
